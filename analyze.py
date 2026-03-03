@@ -10,7 +10,27 @@ from time import sleep
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
-MODEL_NAME = "gemini-1.5-pro" # 최고 성능 모델
+#MODEL_NAME = "gemini-1.5-pro" # 최고 성능 모델
+def get_latest_pro_model():
+    """API를 통해 현재 사용 가능한 가장 최신 Pro 모델을 자동 탐색합니다."""
+    available_models = [
+        m.name for m in genai.list_models() 
+        if 'generateContent' in m.supported_generation_methods
+    ]
+    
+    # 'gemini'와 'pro'가 포함된 모델만 추려내기 (구버전 제외)
+    pro_models = [m for m in available_models if 'gemini' in m and 'pro' in m and 'vision' not in m]
+    
+    # 이름순으로 내림차순 정렬 (버전 숫자가 높은 것이 맨 앞으로 옴)
+    pro_models.sort(reverse=True)
+    
+    # 맨 앞에 있는 가장 최신 모델의 이름 반환 ('models/' 접두사 제거)
+    if pro_models:
+        return pro_models[0].replace('models/', '')
+    return "gemini-pro" # 만약 실패할 경우의 기본 안전값
+
+MODEL_NAME = get_latest_pro_model()
+print(f"🚀 자동 선택된 최신 AI 모델: {MODEL_NAME}")
 DOCS_DIR = "docs"
 IMAGE_DIR = os.path.join(DOCS_DIR, "images")
 os.makedirs(DOCS_DIR, exist_ok=True)
