@@ -551,10 +551,9 @@
 <h4 id="2-why">2. 🎯 연구 목적 (Why)</h4>
 <ul>
 <li><strong>이 연구가 해결하고자 하는 기존의 문제점이나 배경은 무엇인가?</strong><ul>
-<li>안정적이고(Stable), 제어 가능하며(Controllable), 사람과 유사한(Human-like) 음성 합성이 AGI로 나아가는 핵심 역량으로 간주됩니다.</li>
-<li>기존의 대규모 데이터셋으로 학습된 신경망 Text-to-Speech (TTS) 모델들은 고품질 음성 생성이 가능해졌지만, 실시간 합성(Streaming) 및 복잡한 텍스트 처리, 미세한 제어(Fine-grained control) 측면에서 개선의 여지가 있습니다.</li>
-<li>특히, LLM과의 원활한 통합 및 극도로 낮은 first-packet latency(첫 패킷 지연 시간) 달성이 실용적 응용에 중요합니다.</li>
-<li>기존의 Semantic tokenizer는 표현력(Expressive power)이 부족하고, Acoustic tokenizer는 과도한 저수준 디테일을 주입하여 LLM 기반 모델링을 복잡하게 하고 장기 오류 누적을 유발하는 문제가 있었습니다.</li>
+<li>안정적이고(stable), 제어 가능하며(controllable), 사람과 유사한(human-like) 음성 합성이 AGI(범용 인공지능)로 가는 핵심 역량으로 간주됩니다.</li>
+<li>기존의 최신 Neural Text-to-Speech (TTS) 모델들은 고품질 음성 생성 능력을 보이지만, 음성 복제(voice cloning), 세부적인 제어, 실시간 스트리밍 측면에서 개선의 여지가 있습니다.</li>
+<li>특히, 실용적 응용 관점에서 LLM(대규모 언어 모델)과의 원활한 통합 및 극도로 낮은 first-packet latency(첫 패킷 지연 시간) 달성이 중요합니다.</li>
 </ul>
 </li>
 </ul>
@@ -563,24 +562,25 @@
 <li>
 <p><strong>Core Idea:</strong> (핵심 아이디어 상세 설명)</p>
 <ul>
-<li><strong>Dual-track LM Architecture:</strong> 실시간 합성을 위해 텍스트 토큰과 음성 토큰을 채널 축을 따라 연결(Concatenating)하는 이중 트랙 구조를 채택했습니다. 텍스트 토큰 수신 시 해당 음성 토큰을 즉시 예측하여 지연 시간을 최소화합니다.</li>
-<li><strong>Two Tokenizers:</strong> 기능적 요구사항(표현력 vs. 초저지연)에 따라 두 가지 Speech Tokenizer를 도입했습니다.<ol>
-<li><strong>Qwen-TTS-Tokenizer-25Hz:</strong> 의미론적(Semantic) 콘텐츠에 중점을 둔 단일 코드북(Single-codebook) 코덱으로, Qwen-Audio와 통합되며 블록 단위 DiT를 통한 스트리밍 파형 재구성이 가능합니다.</li>
-<li><strong>Qwen-TTS-Tokenizer-12Hz:</strong> 극단적인 비트레이트 감소와 초저지연 스트리밍을 위해 16계층 다중 코드북(Multi-codebook) 설계를 채택했습니다 (12.5 Hz).</li>
-</ol>
-</li>
-<li><strong>Controllability:</strong> 자연어 설명을 통해 새로운 목소리 생성(Voice Design) 또는 생성된 음성의 미세 속성 조작을 지원하며, 이를 위해 ChatML 포맷을 사용하고 훈련 중 확률적으로 활성화되는 사고 패턴(Probabilistically activated thinking pattern)을 도입했습니다.</li>
-<li><strong>Training Strategy:</strong> 5백만 시간 이상의 데이터로 3단계 Pre-training (General, High-Quality, Long-Context) 및 DPO/GSPO를 포함하는 3단계 Post-training을 거쳤습니다.</li>
+<li>Qwen3-TTS는 듀얼 트랙(dual-track) LM 아키텍처를 채택하여 실시간 합성을 구현하며, 두 가지 유형의 speech tokenizers를 도입하여 유연성과 효율성을 모두 확보합니다.</li>
+<li><strong>Controllability:</strong> 자연어 설명을 통해 새로운 목소리를 생성하거나 음성 속성(attribute)을 세밀하게 조작할 수 있습니다.</li>
+<li><strong>Voice Cloning:</strong> 3초 분량의 참조 오디오를 통해 목소리 복제가 가능합니다.</li>
+<li><strong>Streaming:</strong> 텍스트 입력 및 오디오 출력을 위한 스트리밍 방식으로 설계되어 낮은 지연 시간을 달성합니다.</li>
+<li><strong>Training Strategy:</strong> 5백만 시간 이상의 다국어 음성 데이터로 학습되었으며, Pre-training(S1: 일반, S2: 고품질 데이터 집중, S3: 장문 컨텍스트)과 Post-training(DPO, GSPO, Speaker Fine-Tuning) 단계를 거쳐 안정성과 선호도를 높입니다.</li>
 </ul>
 </li>
 <li>
 <p><strong>Model Architecture:</strong> (모델 구조 및 주요 컴포넌트)</p>
 <ul>
-<li><strong>Backbone:</strong> Qwen3 LM family를 활용합니다.</li>
-<li><strong>Tokenization:</strong> Qwen-TTS-Tokenizer-25Hz (단일 코드북, 25Hz) 또는 Qwen-TTS-Tokenizer-12Hz (다중 코드북, 12.5Hz, RVQ 사용)를 사용합니다.</li>
-<li><strong>Qwen3-TTS-25Hz:</strong> Qwen-TTS-Tokenizer-25Hz의 단일 레벨 토큰을 사용하며, 텍스트 특징과 이전 음성 토큰을 통합하여 다음 토큰을 예측한 후, chunk-wise DiT 모듈을 통해 파형을 재구성합니다.</li>
-<li><strong>Qwen3-TTS-12Hz:</strong> RVQ 토큰을 사용하며, 계층적 예측 방식을 채택합니다. Backbone이 0번째 코드북을 예측하면, Multi-Token Prediction (MTP) 모듈이 나머지 잔여 코드북(Residual codebooks)을 생성합니다.</li>
-<li><strong>Code2Wav Module:</strong> 생성된 토큰을 파형으로 변환하는 모듈입니다. (25Hz의 경우 DiT + BigVGAN, 12Hz의 경우 경량 causal ConvNet 사용 가능)</li>
+<li><strong>Backbone:</strong> Qwen3 LM family를 활용하며, 텍스트 토큰과 오디오 토큰을 채널 축을 따라 연결(concatenate)하는 듀얼 트랙 표현을 사용합니다. 텍스트 토큰 수신 시 즉시 해당 음향 토큰을 예측합니다.</li>
+<li><strong>Speaker Encoder:</strong> 정확한 identity 제어를 위해 학습 가능한 speaker encoder가 백본과 함께 공동 훈련됩니다.</li>
+<li><strong>Two Tokenizers:</strong><ol>
+<li><strong>Qwen-TTS-Tokenizer-25Hz:</strong> 25 Hz의 single-codebook 방식. 의미론적(semantic) 내용을 강조하며, Qwen2-Audio 인코더와 통합되어 블록 단위의 DiT(Diffusion Transformer)를 통한 스트리밍 파형 재구성을 지원합니다.</li>
+<li><strong>Qwen-TTS-Tokenizer-12Hz:</strong> 12.5 Hz의 multi-codebook 방식. 극단적인 bitrate 감소와 초저지연 스트리밍을 위해 설계되었으며, 첫 번째 코드북은 의미론적 콘텐츠를, 후속 레이어(16층 RVQ 모듈)는 음향 세부 사항을 인코딩합니다. 경량의 causal ConvNet을 사용하여 파형을 재구성합니다.</li>
+</ol>
+</li>
+<li><strong>Code2Wav Module:</strong> 생성된 토큰을 파형으로 변환합니다. (12Hz의 경우 경량 causal ConvNet, 25Hz의 경우 DiT + BigVGAN)</li>
+<li><strong>Qwen3-TTS-12Hz Specific:</strong> MTP (Multi-Token Prediction) 모듈을 채택하여 잔여 코드북(residual codebooks)을 생성하는 계층적 예측 방식을 사용합니다.</li>
 </ul>
 </li>
 </ul>
@@ -589,63 +589,63 @@
 <li>
 <p><strong>Dataset &amp; Evaluation:</strong> (데이터셋 및 평가 방법)</p>
 <ul>
-<li><strong>데이터셋:</strong> 10개 언어에 걸친 5백만 시간 이상의 음성 데이터로 훈련되었습니다.</li>
-<li><strong>평가 벤치마크:</strong> TTS multilingual test set, InstructTTSEval, Seed-TTS, CV3-Eval, 10분 이상의 장문 테스트 셋 등을 사용했습니다.</li>
-<li><strong>주요 평가 지표:</strong> WER (Word Error Rate), SIM (Speaker Similarity), APS, DSD, RP, STOI, PESQ, UTMOS 등을 사용했습니다.</li>
+<li><strong>데이터셋:</strong> 10개 언어에 걸친 5백만 시간 이상의 음성 데이터.</li>
+<li><strong>평가 벤치마크:</strong> Seed-TTS (제로샷), TTS multilingual test set, InstructTTSEval (제어 가능성), CV3-Eval (교차 언어), 자체 제작 장문 테스트 세트(10분 이상) 등.</li>
+<li><strong>평가 지표:</strong> WER (Word Error Rate), SIM (Speaker Similarity, WavLM 기반), APS/DSD/RP (제어 관련), STOI, PESQ, UTMOS (토크나이저).</li>
 </ul>
 </li>
 <li>
 <p><strong>Experimental Results:</strong> (주요 수치 및 성능 개선 폭 등)</p>
 <ul>
-<li><strong>Zero-Shot Voice Cloning:</strong> Seed-TTS test-en 셋에서 WER 1.24 (Qwen3-TTS-12Hz-1.7B-Base)로 SOTA 달성.</li>
-<li><strong>Multilinguality:</strong> 10개 언어 중 6개 언어에서 MiniMax-Speech 및 ElevenLabs보다 우수한 WER을 기록했으며, 모든 10개 언어에서 Speaker Similarity (SIM) 점수가 우수했습니다.</li>
-<li><strong>Cross-Lingual:</strong> zh-to-ko 생성 시 CosyVoice3 대비 오류율 약 66% 감소 (4.82 vs 14.4).</li>
-<li><strong>Controllability (Voice Design):</strong> 오픈소스 모델 중 SOTA (Qwen3-TTS-12Hz-1.7B-VD). GPT-4o-mini-tts보다 Target Speaker 조작에서 성능 우위 (+28% APS in Chinese).</li>
-<li><strong>Streaming Latency:</strong> 0.6B variant에서 최저 97 ms의 first-packet latency 달성.</li>
+<li><strong>Zero-Shot Cloning:</strong> Qwen3-TTS-12Hz-1.7B-Base 모델은 Seed-TTS test-en 세트에서 WER 1.24를 달성하여 SOTA를 기록했습니다.</li>
+<li><strong>Multilinguality:</strong> 10개 언어 평가에서 6개 언어에서 MiniMax-Speech와 ElevenLabs보다 우수한 WER을 기록했으며, 모든 10개 언어에서 Speaker Similarity 점수가 두 베이스라인을 모두 능가했습니다.</li>
+<li><strong>Cross-Lingual:</strong> zh-to-ko 생성에서 CosyVoice3 대비 오류율을 약 66% 감소(4.82 vs 14.4)시켜 뛰어난 교차 언어 일반화 능력을 보였습니다.</li>
+<li><strong>Controllable Generation (Voice Design):</strong> Qwen3-TTS-12Hz-1.7B-VD는 오픈소스 모델 중 DSD 및 RP 지표에서 SOTA를 달성했습니다.</li>
+<li><strong>Streaming Efficiency:</strong> 12Hz 변형 모델은 단일 요청(Concurrency 1)에서 97ms의 가장 낮은 first-packet latency를 기록했습니다. (Qwen3-TTS-12Hz-0.6B-Base 기준)</li>
 </ul>
 </li>
 <li>
 <p><strong>Key Findings:</strong> (가장 중요한 발견 3가지)</p>
 <ol>
-<li><strong>12Hz Tokenizer의 장기 의존성 모델링 우위:</strong> Zero-shot 생성 평가에서 12Hz 변형 모델이 25Hz 변형 모델보다 WER(콘텐츠 정확도) 측면에서 일관되게 우수했으며, 이는 더 거친 시간 해상도가 안정적인 음성 합성을 위한 장기 의존성 모델링에 유리함을 시사합니다.</li>
-<li><strong>다국어 음성 복제 및 전이 능력:</strong> 상업적 baseline(MiniMax, ElevenLabs) 대비 모든 10개 평가 언어에서 더 높은 Speaker Similarity를 달성했으며, 어려운 cross-lingual 전이(예: zh-to-ko)에서 괄목할 만한 오류율 감소를 보였습니다.</li>
-<li><strong>장문 안정성 확보:</strong> 10분 이상의 긴 오디오 합성에서 청크 기반 시스템의 경계 아티팩트 없이 일관되고 자연스러운 오디오를 생성하는 안정성을 입증했습니다 (25Hz variant가 이 작업에서 12Hz보다 우세).</li>
+<li><strong>12Hz Tokenizer의 효율성:</strong> Qwen-TTS-Tokenizer-12Hz(12.5 Hz)는 더 거친 시간 해상도(coarser temporal resolution) 덕분에 제로샷 음성 생성(WER)에서 25Hz 버전을 일관되게 능가하여 장기 의존성 모델링에 유리함을 시사합니다.</li>
+<li><strong>다중 임무 통합 및 SOTA 성능:</strong> 단일 autoregressive 프레임워크 내에서 제로샷 복제, 다국어 합성, 세밀한 명령어 제어 등 다양한 음성 생성 작업을 통합했으며, 상업용 및 최신 오픈소스 베이스라인을 여러 주요 벤치마크에서 능가하는 SOTA 성능을 달성했습니다.</li>
+<li><strong>장문 안정성 확보:</strong> 특화된 훈련 전략(S3 단계)과 tokenizer 설계(특히 25Hz) 덕분에 청크 기반 시스템에서 발생하는 경계 아티팩트 없이 10분 이상의 자연스럽고 유창한 음성 합성이 가능했습니다.</li>
 </ol>
 </li>
 </ul>
 <h4 id="5">5. ⚠️ 한계점 및 향후 과제</h4>
 <ul>
 <li><strong>Limitations:</strong><ul>
-<li><strong>(1) 논문에서 저자가 밝힌 한계점:</strong> 논문에서 Qwen-TTS-Tokenizer-25Hz의 단일 코드북 설계가 초저지연 애플리케이션 및 일반적인 음성 합성에 덜 적합하다고 언급했습니다.</li>
-<li><strong>(2) 분석가(AI)의 견해:</strong> 논문에서 명시되지 않음.</li>
+<li><strong>(1) 논문에서 저자가 밝힌 한계점:</strong> 논문 본문에서 명시적인 주요 한계점을 열거하지 않았습니다. (단, 25Hz 토크나이저의 single-codebook 설계가 초저지연 애플리케이션 및 일반 음성 합성에 덜 적합하다고 언급됨)</li>
+<li><strong>(2) 분석가(AI)의 견해:</strong> <em>논문에서 명시되지 않음</em> (예: 모델 크기 증가에 따른 계산 비용, 12Hz 모델이 장문 생성에서는 25Hz 모델보다 성능이 떨어지는 현상 등)</li>
 </ul>
 </li>
 <li><strong>Future Work:</strong><ul>
 <li><strong>(1) 논문에서 저자가 밝힌 향후 과제:</strong><ul>
-<li>아키텍처를 확장하여 다양한 오디오 생성(versatile audio generation)을 지원합니다.</li>
-<li>현재 10개 언어를 넘어 다국어 커버리지를 확장합니다.</li>
-<li>보다 세밀한 스타일 제어(more granular stylistic controls)를 탐구합니다.</li>
+<li>아키텍처를 확장하여 다양한 오디오 생성(versatile audio generation)을 지원할 계획입니다.</li>
+<li>현재 10개 언어를 넘어선 다국어 커버리지 확대를 목표로 합니다.</li>
+<li>더 세분화된 스타일 제어(more granular stylistic controls)를 탐색할 예정입니다.</li>
 </ul>
 </li>
-<li><strong>(2) 분석가(AI)의 견해:</strong> 논문에서 명시되지 않음.</li>
+<li><strong>(2) 분석가(AI)의 견해:</strong> <em>논문에서 명시되지 않음</em></li>
 </ul>
 </li>
 </ul>
 <h4 id="6">6. 🧠 핵심 인사이트</h4>
 <ul>
 <li><strong>Significance:</strong> (이 연구가 분야에 미치는 의미와 영향)<ul>
-<li>Qwen3-TTS는 제로샷 클로닝, 다국어 합성, 미세 제어(Voice Design), 초저지연 스트리밍이라는 여러 복잡한 음성 생성 작업을 단일 autoregressive 프레임워크 내에 통합했다는 점에서 중요합니다. 이는 차세대 옴니캐퍼블(omni-capable) 오디오 시스템의 기반을 마련했습니다. 특히, 성능과 지연 시간 요구사항에 따라 선택할 수 있는 두 가지 전문화된 tokenizer를 제공한 점이 독창적입니다.</li>
+<li>Qwen3-TTS는 대규모 언어 모델 기반의 접근 방식(autoregressive LM)을 사용하여 제어 가능성, 자연스러움, 그리고 실시간 스트리밍 요구 사항을 모두 충족하는 고성능 TTS 시스템을 구축했음을 보여주었습니다. 특히, 두 가지 목적(의미론적 풍부함 vs. 초저지연)에 맞춰 토크나이저를 분리하여 설계한 것이 핵심적인 기술적 진보입니다.</li>
 </ul>
 </li>
 <li><strong>Practical Application:</strong> (실무나 연구에 즉시 적용하거나 참고해 볼 만한 아이디어 1가지)<ul>
-<li><strong>Streaming Latency 최적화 전략 참고:</strong> 초저지연 스트리밍을 위해 12.5 Hz의 낮은 토큰 속도와 다중 코드북(RVQ) 설계를 결합하고, 경량의 causal ConvNet을 디코더로 사용하여 Speaker Vector 추출이나 복잡한 Diffusion Model 없이도 낮은 first-packet latency (97ms)를 달성한 방법론은 실시간 음성 인터페이스 개발 시 참고할 가치가 높습니다.</li>
+<li><strong>토크나이저 설계의 모듈화:</strong> 실시간 서비스(초저지연)가 최우선인 경우 12.5Hz Multi-codebook 방식(가벼운 causal ConvNet 디코더 활용)을 사용하고, 최고의 음질 및 의미 표현력이 중요한 오프라인/콘텐츠 생성의 경우 25Hz Single-codebook 방식(DiT 기반)을 사용하는 등, 사용 사례에 따라 토크나이저와 디코더를 선택적으로 조합하는 전략은 다른 TTS 연구에도 유용하게 적용될 수 있습니다.</li>
 </ul>
 </li>
 </ul>
 <h4 id="7">7. 🔗 기타</h4>
 <ul>
 <li><strong>Code:</strong> https://github.com/QwenLM/Qwen3-TTS</li>
-<li><strong>Demo:</strong> 논문에서 명시되지 않음 (단, Hugging Face 및 ModelScope 컬렉션 링크 제공).</li>
+<li><strong>Demo:</strong> 논문에서 명시되지 않음</li>
 </ul>
 <h4 id="8">8. 📑 논문 전체 목차</h4>
 <ul>
