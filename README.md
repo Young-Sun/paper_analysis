@@ -1,8 +1,6 @@
-# paper_analysis
+# 📚 AI Paper Analysis & Archive
 
-# 📚 AI Paper Analyzer & Archive
-
-자동으로 논문을 분석하고 시각화하여 나만의 웹 라이브러리를 구축하는 시스템입니다.
+논문 분석 및 기록하여 나만의 웹 라이브러리를 구축하는 시스템
 
 ## 🚀 사용 방법 (회사에서 논문 추가하기)
 
@@ -13,7 +11,7 @@
 5. 약 3~5분 뒤, 아래 [내 웹사이트 주소]에서 분석 보고서를 확인하세요!
 
 ## 🌐 내 전용 논문 아카이브 웹사이트
-> **주소:** `https://[본인의GitHub아이디].github.io/[저장소이름]/`
+> **주소:** `https://Young-Sun.github.io/paper_analysis/`
 
 ---
 
