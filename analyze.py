@@ -8,7 +8,6 @@ from time import sleep
 
 # --- 설정 ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-# 최신 SDK의 클라이언트 설정 방식
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 DOCS_DIR = "docs"
@@ -56,25 +55,17 @@ You are a world-class AI/ML paper analysis expert. I am providing you with the m
 """
 
 def get_latest_model(mode="free"):
-    """mode(free/pro)에 따라 현재 사용 가능한 최신 모델을 자동 탐색합니다."""
     try:
-        # 최신 SDK 방식의 모델 리스트 가져오기
         available_models = [m.name for m in client.models.list()]
-        
         if mode == "pro":
-            # pro 모델 추려내기 (vision 전용 제외)
             target_models = [m for m in available_models if 'gemini' in m and 'pro' in m and 'vision' not in m]
         else:
-            # flash(무료) 모델 추려내기
             target_models = [m for m in available_models if 'gemini' in m and 'flash' in m and 'vision' not in m]
-            
         target_models.sort(reverse=True)
         if target_models:
             return target_models[0].replace('models/', '')
-    except Exception as e:
-        print(f"모델 탐색 에러: {e}")
-        
-    # 탐색 실패 시 가장 안정적인 기본 모델명 반환
+    except:
+        pass
     return "gemini-2.5-pro" if mode == "pro" else "gemini-2.5-flash"
 
 def parse_arxiv_id(url: str):
@@ -89,7 +80,6 @@ def fetch_arxiv_metadata(arxiv_id: str):
         ns = {'atom': 'http://www.w3.org/2005/Atom'}
         entry = root.find('atom:entry', ns)
         if entry is None: return None
-        
         return {
             "title": entry.find('atom:title', ns).text.replace('\n', ' ').strip(),
             "abstract": entry.find('atom:summary', ns).text.replace('\n', ' ').strip(),
@@ -109,26 +99,92 @@ def download_pdf_safely(url: str, output_path: str):
     except:
         return False
 
-def extract_and_crop_pdf(pdf_path: str, paper_id: str):
+# --- 핵심 수정 부분: Figures 및 캡션 지능적 추출 ---
+def extract_figures_and_captions(pdf_path: str, paper_id: str):
+    """
+    페이지 내 'Fig.' 텍스트 위치를 찾고, 그 주변의 그림 영역을 캡처하여 저장합니다.
+    동시에 해당 Figure의 캡션 전체 텍스트를 추출합니다.
+    """
     doc = fitz.open(pdf_path)
-    full_text = ""
-    image_paths = []
+    figure_data = [] # (이미지파일명, 캡션텍스트) 튜플 리스트
     
     for page_num, page in enumerate(doc):
-        full_text += page.get_text("text") + "\n"
-        for img_index, img in enumerate(page.get_images(full=True), start=1):
-            base_image = doc.extract_image(img[0])
-            if len(base_image["image"]) < 10000: continue
+        # 1. 캡션 텍스트 블록 찾기 ("Fig. 1" 등)
+        text_blocks = page.get_text("blocks")
+        for block in text_blocks:
+            block_text = block[4].strip()
+            # 정규식으로 Figure 캡션 시작 부분 탐색 (예: Fig. 1, Figure 1, Figs. 1, FIGS. 1)
+            match = re.search(r'^\s*(Fig|Figure|Figs|FIG|FIGURE)\.?\s*(\d+)', block_text, re.IGNORECASE)
             
-            img_filename = f"{paper_id}_p{page_num+1}_img{img_index}.{base_image['ext']}"
-            with open(os.path.join(IMAGE_DIR, img_filename), "wb") as f:
-                f.write(base_image["image"])
-            image_paths.append(img_filename)
+            if match:
+                fig_number = match.group(2)
+                full_caption = block_text.replace('\n', ' ') # 캡션 내 줄바꿈 제거
+                
+                # 2. 캡션 블록 위치 (b_rect) 기반으로 주변 그림 영역 탐색
+                b_rect = fitz.Rect(block[:4])
+                
+                # 캡션 바로 위(또는 아래) 영역 설정 (그림이 있을 것으로 예상되는 곳)
+                # 캡션 블록의 높이만큼 위로 영역 확장
+                search_rect = fitz.Rect(b_rect.x0, b_rect.y0 - b_rect.height*2, b_rect.x1, b_rect.y0)
+                
+                # 3. 해당 영역 내의 실제 그림(Image/Drawing) 객체 탐색
+                page_images = page.get_images(full=True)
+                target_image = None
+                
+                for img in page_images:
+                    xref = img[0]
+                    # 이미지 객체의 페이지 내 좌표 영역(rect) 가져오기
+                    img_rects = page.get_image_rects(xref)
+                    if img_rects:
+                        img_rect = img_rects[0]
+                        # 캡션 주변 검색 영역(search_rect)과 실제 이미지 영역(img_rect)이 겹치는지 확인
+                        if search_rect.intersects(img_rect):
+                            target_image = xref
+                            break # 첫 번째 매칭되는 그림 선택
+                
+                # 4. 그림 매칭 성공 시, 배경색 수정 후 저장
+                if target_image:
+                    img_filename = f"{paper_id}_Fig{fig_number}_p{page_num+1}.png"
+                    img_filepath = os.path.join(IMAGE_DIR, img_filename)
+                    
+                    try:
+                        # 배경색 수정 로직 (투명 -> 흰색)
+                        # 원본 이미지 정보를 픽스맵(Pixmap)으로 가져옴
+                        pix = fitz.Pixmap(doc, target_image)
+                        
+                        # 투명도(Alpha) 채널이 있는 경우 (배경이 검게 나오는 원인)
+                        if pix.alpha:
+                            # 흰색 배경의 새로운 픽스맵 생성
+                            wh_pix = fitz.Pixmap(fitz.csRGB, pix.width, pix.height, 0)
+                            wh_pix.clear_with_white() # 전체를 흰색으로 채움
+                            
+                            # 원본 이미지를 흰색 배경 위에 덮어쓰기 (투명한 부분이 흰색으로 보임)
+                            wh_pix.copy(pix, (0, 0, pix.width, pix.height))
+                            pix = wh_pix # 교체
+                        
+                        # 최종 이미지 저장
+                        pix.save(img_filepath)
+                        pix = None # 메모리 해제
+                        
+                        figure_data.append((img_filename, full_caption))
+                        # print(f"    -> Fig {fig_number} 추출 성공: {img_filename}")
+                    except Exception as e:
+                        print(f"    -> Fig {fig_number} 저장 실패: {e}")
+    
     doc.close()
+    return figure_data
 
+# --- 토큰 다이어트 함수 ---
+def crop_references(pdf_path: str):
+    doc = fitz.open(pdf_path)
+    full_text = ""
+    for page in doc:
+        full_text += page.get_text("text") + "\n"
+    doc.close()
+    
     match = re.search(r'\n\s*(References|Bibliography|REFERENCES)\s*\n', full_text)
     cropped_text = full_text[:match.start()] if match else full_text
-    return cropped_text, image_paths
+    return cropped_text
 
 def process_paper(source_url: str, mode: str = "free"):
     arxiv_id = parse_arxiv_id(source_url)
@@ -139,7 +195,6 @@ def process_paper(source_url: str, mode: str = "free"):
         print(f"이미 분석된 논문입니다. 스킵합니다: {source_url}")
         return
 
-    # 설정된 모드에 맞춰 모델 탐색
     model_name = get_latest_model(mode)
     print(f"\n[{source_url}] 분석 시작... (선택된 모델: {model_name} / 모드: {mode.upper()})")
 
@@ -156,10 +211,17 @@ def process_paper(source_url: str, mode: str = "free"):
         print("PDF 다운로드 실패")
         return
 
-    cropped_text, images = extract_and_crop_pdf(pdf_path, paper_id)
-    os.remove(pdf_path)
+    # 1. Figures 및 캡션 지능적 추출 (배경색 수정 포함)
+    print(" -> 정식 Figure 및 캡션 매칭 추출 진행 중...")
+    figure_data = extract_figures_and_captions(pdf_path, paper_id)
+    
+    # 2. 토큰 다이어트 (본문 텍스트 추출)
+    cropped_text = crop_references(pdf_path)
+    
+    os.remove(pdf_path) # 임시 파일 삭제
 
-    # 최신 SDK 방식의 API 호출
+    # 3. Gemini API 호출
+    print(f" -> Gemini API 호출 중...")
     api_input = SYSTEM_PROMPT + "\n\n--- PAPER CONTENT ---\n" + cropped_text
     try:
         response = client.models.generate_content(
@@ -171,7 +233,8 @@ def process_paper(source_url: str, mode: str = "free"):
         print(f"API 에러: {e}")
         return
 
-    # 마크다운 작성
+    # 4. 마크다운 작성 및 조립
+    print(" -> 마크다운 보고서 최종 조립 중...")
     with open(md_filename, "w", encoding="utf-8") as f:
         if metadata:
             f.write(f"# 📄 {metadata['title']}\n\n")
@@ -183,11 +246,18 @@ def process_paper(source_url: str, mode: str = "free"):
             f.write(f"# 📄 [논문 분석: {paper_id}]\n\n* **원문 링크:** [{source_url}]({source_url})\n* **분석 모델:** {model_name}\n\n---\n")
         
         f.write(analysis_result)
-        f.write("\n\n---\n#### 🖼️ 추출된 주요 그림 및 표\n\n")
-        for img in images:
-            f.write(f"![{img}](images/{img})\n\n")
+        f.write("\n\n---\n#### 🖼️ 추출된 주요 그림(Figures)\n\n")
+        
+        if figure_data:
+            for img_name, caption in figure_data:
+                # 마크다운 태그로 이미지 삽입
+                f.write(f"![{img_name}](images/{img_name})\n\n")
+                # 그 아래 캡션 텍스트 그대로 작성
+                f.write(f"> **{caption}**\n\n<br>\n\n") # 블록인용구 및 줄바꿈 적용
+        else:
+            f.write("문서에서 정식 Figure를 추출하지 못했습니다.\n")
 
-    print(f"완료: {md_filename}")
+    print(f"✅ 분석 및 Figure 추출 완료: {md_filename}")
 
 if __name__ == "__main__":
     if os.path.exists("paper_links.txt"):
@@ -195,11 +265,8 @@ if __name__ == "__main__":
             for line in f:
                 line = line.strip()
                 if not line: continue
-                
-                # 쉼표(,)를 기준으로 링크와 옵션(free/pro) 분리
                 parts = [p.strip() for p in line.split(',')]
                 url = parts[0]
                 mode = parts[1].lower() if len(parts) > 1 and parts[1].lower() in ['pro', 'free'] else 'free'
-                
                 process_paper(url, mode)
-                sleep(3) # API Rate Limit 방지
+                sleep(3)
