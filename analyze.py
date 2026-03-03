@@ -3,40 +3,20 @@ import re
 import urllib.request
 import xml.etree.ElementTree as ET
 import fitz  # PyMuPDF
-import google.generativeai as genai
+from google import genai
 from time import sleep
 
 # --- 설정 ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+# 최신 SDK의 클라이언트 설정 방식
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-#MODEL_NAME = "gemini-1.5-pro" # 최고 성능 모델
-def get_latest_pro_model():
-    """API를 통해 현재 사용 가능한 가장 최신 Pro 모델을 자동 탐색합니다."""
-    available_models = [
-        m.name for m in genai.list_models() 
-        if 'generateContent' in m.supported_generation_methods
-    ]
-    
-    # 'gemini'와 'pro'가 포함된 모델만 추려내기 (구버전 제외)
-    pro_models = [m for m in available_models if 'gemini' in m and 'pro' in m and 'vision' not in m]
-    
-    # 이름순으로 내림차순 정렬 (버전 숫자가 높은 것이 맨 앞으로 옴)
-    pro_models.sort(reverse=True)
-    
-    # 맨 앞에 있는 가장 최신 모델의 이름 반환 ('models/' 접두사 제거)
-    if pro_models:
-        return pro_models[0].replace('models/', '')
-    return "gemini-pro" # 만약 실패할 경우의 기본 안전값
-
-MODEL_NAME = get_latest_pro_model()
-print(f"🚀 자동 선택된 최신 AI 모델: {MODEL_NAME}")
 DOCS_DIR = "docs"
 IMAGE_DIR = os.path.join(DOCS_DIR, "images")
 os.makedirs(DOCS_DIR, exist_ok=True)
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
-# 시스템 프롬프트 (최종 확정본)
+# 시스템 프롬프트
 SYSTEM_PROMPT = """
 You are a world-class AI/ML paper analysis expert. I am providing you with the main text of an academic paper.
 
@@ -74,6 +54,28 @@ You are a world-class AI/ML paper analysis expert. I am providing you with the m
 #### 8. 📑 논문 전체 목차
 * **Table of Contents:** (논문 본문을 분석하여 메인 섹션 헤더 추출)
 """
+
+def get_latest_model(mode="free"):
+    """mode(free/pro)에 따라 현재 사용 가능한 최신 모델을 자동 탐색합니다."""
+    try:
+        # 최신 SDK 방식의 모델 리스트 가져오기
+        available_models = [m.name for m in client.models.list()]
+        
+        if mode == "pro":
+            # pro 모델 추려내기 (vision 전용 제외)
+            target_models = [m for m in available_models if 'gemini' in m and 'pro' in m and 'vision' not in m]
+        else:
+            # flash(무료) 모델 추려내기
+            target_models = [m for m in available_models if 'gemini' in m and 'flash' in m and 'vision' not in m]
+            
+        target_models.sort(reverse=True)
+        if target_models:
+            return target_models[0].replace('models/', '')
+    except Exception as e:
+        print(f"모델 탐색 에러: {e}")
+        
+    # 탐색 실패 시 가장 안정적인 기본 모델명 반환
+    return "gemini-2.5-pro" if mode == "pro" else "gemini-2.5-flash"
 
 def parse_arxiv_id(url: str):
     match = re.search(r'arxiv\.org/(?:abs|pdf|html)/([a-zA-Z0-9.\-]+)', url)
@@ -116,7 +118,7 @@ def extract_and_crop_pdf(pdf_path: str, paper_id: str):
         full_text += page.get_text("text") + "\n"
         for img_index, img in enumerate(page.get_images(full=True), start=1):
             base_image = doc.extract_image(img[0])
-            if len(base_image["image"]) < 10000: continue # 너무 작은 노이즈 아이콘 제외
+            if len(base_image["image"]) < 10000: continue
             
             img_filename = f"{paper_id}_p{page_num+1}_img{img_index}.{base_image['ext']}"
             with open(os.path.join(IMAGE_DIR, img_filename), "wb") as f:
@@ -124,21 +126,22 @@ def extract_and_crop_pdf(pdf_path: str, paper_id: str):
             image_paths.append(img_filename)
     doc.close()
 
-    # 토큰 다이어트: References 이후 절단
     match = re.search(r'\n\s*(References|Bibliography|REFERENCES)\s*\n', full_text)
     cropped_text = full_text[:match.start()] if match else full_text
     return cropped_text, image_paths
 
-def process_paper(source_url: str):
-    print(f"[{source_url}] 분석 시작...")
+def process_paper(source_url: str, mode: str = "free"):
     arxiv_id = parse_arxiv_id(source_url)
     paper_id = arxiv_id.replace('.', '_') if arxiv_id else f"paper_{hash(source_url) % 10000}"
     md_filename = os.path.join(DOCS_DIR, f"{paper_id}.md")
 
-    # 이미 분석된 논문이면 스킵
     if os.path.exists(md_filename):
-        print("이미 분석된 논문입니다. 스킵합니다.")
+        print(f"이미 분석된 논문입니다. 스킵합니다: {source_url}")
         return
+
+    # 설정된 모드에 맞춰 모델 탐색
+    model_name = get_latest_model(mode)
+    print(f"\n[{source_url}] 분석 시작... (선택된 모델: {model_name} / 모드: {mode.upper()})")
 
     metadata = None
     pdf_path = f"temp_{paper_id}.pdf"
@@ -154,13 +157,15 @@ def process_paper(source_url: str):
         return
 
     cropped_text, images = extract_and_crop_pdf(pdf_path, paper_id)
-    os.remove(pdf_path) # 임시 파일 삭제
+    os.remove(pdf_path)
 
-    # Gemini API 호출
-    model = genai.GenerativeModel(MODEL_NAME)
+    # 최신 SDK 방식의 API 호출
     api_input = SYSTEM_PROMPT + "\n\n--- PAPER CONTENT ---\n" + cropped_text
     try:
-        response = model.generate_content(api_input)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=api_input,
+        )
         analysis_result = response.text
     except Exception as e:
         print(f"API 에러: {e}")
@@ -171,10 +176,11 @@ def process_paper(source_url: str):
         if metadata:
             f.write(f"# 📄 {metadata['title']}\n\n")
             f.write(f"* **저자 / 기관 / 발행년도:** {metadata['authors']} / {metadata['year']}\n")
-            f.write(f"* **원문 링크:** [{source_url}]({source_url})\n\n")
+            f.write(f"* **원문 링크:** [{source_url}]({source_url})\n")
+            f.write(f"* **분석 모델:** {model_name}\n\n")
             f.write(f"#### 1. 📖 Abstract\n* **Original:** {metadata['abstract']}\n\n---\n")
         else:
-            f.write(f"# 📄 [논문 분석: {paper_id}]\n\n* **원문 링크:** [{source_url}]({source_url})\n\n---\n")
+            f.write(f"# 📄 [논문 분석: {paper_id}]\n\n* **원문 링크:** [{source_url}]({source_url})\n* **분석 모델:** {model_name}\n\n---\n")
         
         f.write(analysis_result)
         f.write("\n\n---\n#### 🖼️ 추출된 주요 그림 및 표\n\n")
@@ -187,7 +193,13 @@ if __name__ == "__main__":
     if os.path.exists("paper_links.txt"):
         with open("paper_links.txt", "r") as f:
             for line in f:
-                url = line.strip()
-                if url:
-                    process_paper(url)
-                    sleep(3) # API Rate Limit 방지
+                line = line.strip()
+                if not line: continue
+                
+                # 쉼표(,)를 기준으로 링크와 옵션(free/pro) 분리
+                parts = [p.strip() for p in line.split(',')]
+                url = parts[0]
+                mode = parts[1].lower() if len(parts) > 1 and parts[1].lower() in ['pro', 'free'] else 'free'
+                
+                process_paper(url, mode)
+                sleep(3) # API Rate Limit 방지
