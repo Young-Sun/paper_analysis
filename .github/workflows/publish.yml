@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'paper_links.txt' # 이 파일이 수정될 때만 작동
+      - 'paper_links.txt'
+      - 'analyze.py' # 코드 수정 시에도 작동하도록 추가
   workflow_dispatch:
 
 permissions:
@@ -17,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 전체 히스토리를 가져와 충돌 방지
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,20 +27,28 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
       - name: Run Paper Analysis Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python analyze.py
 
-      - name: Commit newly generated Markdown and Images
+      # [중요] 분석된 파일들을 main 브랜치에 안전하게 저장
+      - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/
-          # 변경사항이 있을 경우에만 커밋
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-generated paper analysis" && git push)
+          # 변경사항이 있을 때만 커밋하고, [skip ci]를 붙여 무한 루프 방지
+          if [ -n "$(git status --porcelain docs/)" ]; then
+            git commit -m "docs: auto-generate analysis and images [skip ci]"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
 
+      # [중요] 최종적으로 웹사이트 업데이트
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
