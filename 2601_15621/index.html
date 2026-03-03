@@ -1,0 +1,747 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>📄 Qwen3-TTS Technical Report - AI Paper Analyzer</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#qwen3-tts-technical-report" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AI Paper Analyzer" class="md-header__button md-logo" aria-label="AI Paper Analyzer" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AI Paper Analyzer
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              📄 Qwen3-TTS Technical Report
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AI Paper Analyzer" class="md-nav__button md-logo" aria-label="AI Paper Analyzer" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AI Paper Analyzer
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    📚 My AI Paper Archive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    📄 Qwen3-TTS Technical Report
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    📄 Qwen3-TTS Technical Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#qwen3-tts-technical-report_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qwen3-TTS Technical Report 분석
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Qwen3-TTS Technical Report 분석">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 🎯 연구 목적 (Why)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-how" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 🛠️ 연구 방법론 (How)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. 💡 주요 결과 (What)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. ⚠️ 한계점 및 향후 과제
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 🧠 핵심 인사이트
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 🔗 기타
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 📑 논문 전체 목차
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖼️ 추출된 주요 그림(Figures)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#qwen3-tts-technical-report_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qwen3-TTS Technical Report 분석
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Qwen3-TTS Technical Report 분석">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 🎯 연구 목적 (Why)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-how" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 🛠️ 연구 방법론 (How)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. 💡 주요 결과 (What)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. ⚠️ 한계점 및 향후 과제
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 🧠 핵심 인사이트
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 🔗 기타
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 📑 논문 전체 목차
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#figures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖼️ 추출된 주요 그림(Figures)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="qwen3-tts-technical-report">📄 Qwen3-TTS Technical Report</h1>
+<ul>
+<li><strong>저자:</strong> Hangrui Hu, Xinfa Zhu, Ting He, Dake Guo, Bin Zhang, Xiong Wang, Zhifang Guo, Ziyue Jiang, Hongkun Hao, Zishan Guo, Xinyu Zhang, Pei Zhang, Baosong Yang, Jin Xu, Jingren Zhou, Junyang Lin (2026)</li>
+<li><strong>원문:</strong> <a href="https://arxiv.org/abs/2601.15621">https://arxiv.org/abs/2601.15621</a></li>
+</ul>
+<hr />
+<h2 id="qwen3-tts-technical-report_1">Qwen3-TTS Technical Report 분석</h2>
+<h4 id="2-why">2. 🎯 연구 목적 (Why)</h4>
+<ul>
+<li><strong>이 연구가 해결하고자 하는 기존의 문제점이나 배경은 무엇인가?</strong><ul>
+<li>안정적이고(Stable), 제어 가능하며(Controllable), 사람과 유사한(Human-like) 음성 합성이 AGI로 나아가는 핵심 역량으로 간주됩니다.</li>
+<li>기존의 대규모 데이터셋으로 학습된 신경망 Text-to-Speech (TTS) 모델들은 고품질 음성 생성이 가능해졌지만, 실시간 합성(Streaming) 및 복잡한 텍스트 처리, 미세한 제어(Fine-grained control) 측면에서 개선의 여지가 있습니다.</li>
+<li>특히, LLM과의 원활한 통합 및 극도로 낮은 first-packet latency(첫 패킷 지연 시간) 달성이 실용적 응용에 중요합니다.</li>
+<li>기존의 Semantic tokenizer는 표현력(Expressive power)이 부족하고, Acoustic tokenizer는 과도한 저수준 디테일을 주입하여 LLM 기반 모델링을 복잡하게 하고 장기 오류 누적을 유발하는 문제가 있었습니다.</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-how">3. 🛠️ 연구 방법론 (How)</h4>
+<ul>
+<li>
+<p><strong>Core Idea:</strong> (핵심 아이디어 상세 설명)</p>
+<ul>
+<li><strong>Dual-track LM Architecture:</strong> 실시간 합성을 위해 텍스트 토큰과 음성 토큰을 채널 축을 따라 연결(Concatenating)하는 이중 트랙 구조를 채택했습니다. 텍스트 토큰 수신 시 해당 음성 토큰을 즉시 예측하여 지연 시간을 최소화합니다.</li>
+<li><strong>Two Tokenizers:</strong> 기능적 요구사항(표현력 vs. 초저지연)에 따라 두 가지 Speech Tokenizer를 도입했습니다.<ol>
+<li><strong>Qwen-TTS-Tokenizer-25Hz:</strong> 의미론적(Semantic) 콘텐츠에 중점을 둔 단일 코드북(Single-codebook) 코덱으로, Qwen-Audio와 통합되며 블록 단위 DiT를 통한 스트리밍 파형 재구성이 가능합니다.</li>
+<li><strong>Qwen-TTS-Tokenizer-12Hz:</strong> 극단적인 비트레이트 감소와 초저지연 스트리밍을 위해 16계층 다중 코드북(Multi-codebook) 설계를 채택했습니다 (12.5 Hz).</li>
+</ol>
+</li>
+<li><strong>Controllability:</strong> 자연어 설명을 통해 새로운 목소리 생성(Voice Design) 또는 생성된 음성의 미세 속성 조작을 지원하며, 이를 위해 ChatML 포맷을 사용하고 훈련 중 확률적으로 활성화되는 사고 패턴(Probabilistically activated thinking pattern)을 도입했습니다.</li>
+<li><strong>Training Strategy:</strong> 5백만 시간 이상의 데이터로 3단계 Pre-training (General, High-Quality, Long-Context) 및 DPO/GSPO를 포함하는 3단계 Post-training을 거쳤습니다.</li>
+</ul>
+</li>
+<li>
+<p><strong>Model Architecture:</strong> (모델 구조 및 주요 컴포넌트)</p>
+<ul>
+<li><strong>Backbone:</strong> Qwen3 LM family를 활용합니다.</li>
+<li><strong>Tokenization:</strong> Qwen-TTS-Tokenizer-25Hz (단일 코드북, 25Hz) 또는 Qwen-TTS-Tokenizer-12Hz (다중 코드북, 12.5Hz, RVQ 사용)를 사용합니다.</li>
+<li><strong>Qwen3-TTS-25Hz:</strong> Qwen-TTS-Tokenizer-25Hz의 단일 레벨 토큰을 사용하며, 텍스트 특징과 이전 음성 토큰을 통합하여 다음 토큰을 예측한 후, chunk-wise DiT 모듈을 통해 파형을 재구성합니다.</li>
+<li><strong>Qwen3-TTS-12Hz:</strong> RVQ 토큰을 사용하며, 계층적 예측 방식을 채택합니다. Backbone이 0번째 코드북을 예측하면, Multi-Token Prediction (MTP) 모듈이 나머지 잔여 코드북(Residual codebooks)을 생성합니다.</li>
+<li><strong>Code2Wav Module:</strong> 생성된 토큰을 파형으로 변환하는 모듈입니다. (25Hz의 경우 DiT + BigVGAN, 12Hz의 경우 경량 causal ConvNet 사용 가능)</li>
+</ul>
+</li>
+</ul>
+<h4 id="4-what">4. 💡 주요 결과 (What)</h4>
+<ul>
+<li>
+<p><strong>Dataset &amp; Evaluation:</strong> (데이터셋 및 평가 방법)</p>
+<ul>
+<li><strong>데이터셋:</strong> 10개 언어에 걸친 5백만 시간 이상의 음성 데이터로 훈련되었습니다.</li>
+<li><strong>평가 벤치마크:</strong> TTS multilingual test set, InstructTTSEval, Seed-TTS, CV3-Eval, 10분 이상의 장문 테스트 셋 등을 사용했습니다.</li>
+<li><strong>주요 평가 지표:</strong> WER (Word Error Rate), SIM (Speaker Similarity), APS, DSD, RP, STOI, PESQ, UTMOS 등을 사용했습니다.</li>
+</ul>
+</li>
+<li>
+<p><strong>Experimental Results:</strong> (주요 수치 및 성능 개선 폭 등)</p>
+<ul>
+<li><strong>Zero-Shot Voice Cloning:</strong> Seed-TTS test-en 셋에서 WER 1.24 (Qwen3-TTS-12Hz-1.7B-Base)로 SOTA 달성.</li>
+<li><strong>Multilinguality:</strong> 10개 언어 중 6개 언어에서 MiniMax-Speech 및 ElevenLabs보다 우수한 WER을 기록했으며, 모든 10개 언어에서 Speaker Similarity (SIM) 점수가 우수했습니다.</li>
+<li><strong>Cross-Lingual:</strong> zh-to-ko 생성 시 CosyVoice3 대비 오류율 약 66% 감소 (4.82 vs 14.4).</li>
+<li><strong>Controllability (Voice Design):</strong> 오픈소스 모델 중 SOTA (Qwen3-TTS-12Hz-1.7B-VD). GPT-4o-mini-tts보다 Target Speaker 조작에서 성능 우위 (+28% APS in Chinese).</li>
+<li><strong>Streaming Latency:</strong> 0.6B variant에서 최저 97 ms의 first-packet latency 달성.</li>
+</ul>
+</li>
+<li>
+<p><strong>Key Findings:</strong> (가장 중요한 발견 3가지)</p>
+<ol>
+<li><strong>12Hz Tokenizer의 장기 의존성 모델링 우위:</strong> Zero-shot 생성 평가에서 12Hz 변형 모델이 25Hz 변형 모델보다 WER(콘텐츠 정확도) 측면에서 일관되게 우수했으며, 이는 더 거친 시간 해상도가 안정적인 음성 합성을 위한 장기 의존성 모델링에 유리함을 시사합니다.</li>
+<li><strong>다국어 음성 복제 및 전이 능력:</strong> 상업적 baseline(MiniMax, ElevenLabs) 대비 모든 10개 평가 언어에서 더 높은 Speaker Similarity를 달성했으며, 어려운 cross-lingual 전이(예: zh-to-ko)에서 괄목할 만한 오류율 감소를 보였습니다.</li>
+<li><strong>장문 안정성 확보:</strong> 10분 이상의 긴 오디오 합성에서 청크 기반 시스템의 경계 아티팩트 없이 일관되고 자연스러운 오디오를 생성하는 안정성을 입증했습니다 (25Hz variant가 이 작업에서 12Hz보다 우세).</li>
+</ol>
+</li>
+</ul>
+<h4 id="5">5. ⚠️ 한계점 및 향후 과제</h4>
+<ul>
+<li><strong>Limitations:</strong><ul>
+<li><strong>(1) 논문에서 저자가 밝힌 한계점:</strong> 논문에서 Qwen-TTS-Tokenizer-25Hz의 단일 코드북 설계가 초저지연 애플리케이션 및 일반적인 음성 합성에 덜 적합하다고 언급했습니다.</li>
+<li><strong>(2) 분석가(AI)의 견해:</strong> 논문에서 명시되지 않음.</li>
+</ul>
+</li>
+<li><strong>Future Work:</strong><ul>
+<li><strong>(1) 논문에서 저자가 밝힌 향후 과제:</strong><ul>
+<li>아키텍처를 확장하여 다양한 오디오 생성(versatile audio generation)을 지원합니다.</li>
+<li>현재 10개 언어를 넘어 다국어 커버리지를 확장합니다.</li>
+<li>보다 세밀한 스타일 제어(more granular stylistic controls)를 탐구합니다.</li>
+</ul>
+</li>
+<li><strong>(2) 분석가(AI)의 견해:</strong> 논문에서 명시되지 않음.</li>
+</ul>
+</li>
+</ul>
+<h4 id="6">6. 🧠 핵심 인사이트</h4>
+<ul>
+<li><strong>Significance:</strong> (이 연구가 분야에 미치는 의미와 영향)<ul>
+<li>Qwen3-TTS는 제로샷 클로닝, 다국어 합성, 미세 제어(Voice Design), 초저지연 스트리밍이라는 여러 복잡한 음성 생성 작업을 단일 autoregressive 프레임워크 내에 통합했다는 점에서 중요합니다. 이는 차세대 옴니캐퍼블(omni-capable) 오디오 시스템의 기반을 마련했습니다. 특히, 성능과 지연 시간 요구사항에 따라 선택할 수 있는 두 가지 전문화된 tokenizer를 제공한 점이 독창적입니다.</li>
+</ul>
+</li>
+<li><strong>Practical Application:</strong> (실무나 연구에 즉시 적용하거나 참고해 볼 만한 아이디어 1가지)<ul>
+<li><strong>Streaming Latency 최적화 전략 참고:</strong> 초저지연 스트리밍을 위해 12.5 Hz의 낮은 토큰 속도와 다중 코드북(RVQ) 설계를 결합하고, 경량의 causal ConvNet을 디코더로 사용하여 Speaker Vector 추출이나 복잡한 Diffusion Model 없이도 낮은 first-packet latency (97ms)를 달성한 방법론은 실시간 음성 인터페이스 개발 시 참고할 가치가 높습니다.</li>
+</ul>
+</li>
+</ul>
+<h4 id="7">7. 🔗 기타</h4>
+<ul>
+<li><strong>Code:</strong> https://github.com/QwenLM/Qwen3-TTS</li>
+<li><strong>Demo:</strong> 논문에서 명시되지 않음 (단, Hugging Face 및 ModelScope 컬렉션 링크 제공).</li>
+</ul>
+<h4 id="8">8. 📑 논문 전체 목차</h4>
+<ul>
+<li><strong>Table of Contents:</strong><ul>
+<li>Abstract</li>
+<li>1 Introduction</li>
+<li>2 Qwen-TTS-Tokenizer<ul>
+<li>2.1 Qwen-TTS-Tokenizer-25Hz</li>
+<li>2.2 Qwen-TTS-Tokenizer-12Hz</li>
+</ul>
+</li>
+<li>3 Method<ul>
+<li>3.1 Architectures</li>
+<li>3.2 Training</li>
+<li>3.3 Features</li>
+<li>3.4 Efficiency</li>
+</ul>
+</li>
+<li>4 Experiments<ul>
+<li>4.1 Evaluation of Speech Tokenizer<ul>
+<li>4.1.1 Qwen-TTS-Tokenizer-25Hz</li>
+<li>4.1.2 Qwen-TTS-Tokenizer-12Hz</li>
+</ul>
+</li>
+<li>4.2 Speech Generation<ul>
+<li>4.2.1 Evaluation of Zero-Shot Speech Generation</li>
+<li>4.2.2 Evaluation of Multilingual Speech Generation</li>
+<li>4.2.3 Evaluation of Cross-Lingual Speech Generation</li>
+<li>4.2.4 Evaluation of Controllable Speech Generation</li>
+<li>4.2.5 Evaluation of Target-Speaker Speech Generation</li>
+<li>4.2.6 Evaluation of Long Speech Generation</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>5 Conclusion</li>
+<li>6 Authors</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h4 id="figures">🖼️ 추출된 주요 그림(Figures)</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
