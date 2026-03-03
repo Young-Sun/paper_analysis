@@ -1,0 +1,7 @@
+site_name: AI Paper Analyzer
+theme:
+  name: material
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
