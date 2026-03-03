@@ -1,22 +1,22 @@
 import os
 import re
 import urllib.request
-import xml.etree.ElementTree as ET
 import fitz  # PyMuPDF
 from google import genai
 from time import sleep
 
-# --- 설정 ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-DOCS_DIR = "docs"
+# --- [수정] 폴더 생성 로직 강화 ---
+# 실행될 때마다 docs와 docs/images 폴더가 있는지 확인하고 없으면 만듭니다.
+BASE_DIR = os.getcwd()
+DOCS_DIR = os.path.join(BASE_DIR, "docs")
 IMAGE_DIR = os.path.join(DOCS_DIR, "images")
-os.makedirs(DOCS_DIR, exist_ok=True)
+
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
-# 시스템 프롬프트 (기존 유지)
-SYSTEM_PROMPT = """...기존 내용..."""
+# Gemini 설정
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+SYSTEM_PROMPT = "당신은 AI/ML 논문 분석 전문가입니다. 논문을 한국어로 핵심 요약해주세요."
 
 def get_latest_model(mode="free"):
     try:
@@ -24,82 +24,90 @@ def get_latest_model(mode="free"):
         target = 'pro' if mode == 'pro' else 'flash'
         models = [m for m in available_models if 'gemini' in m and target in m and 'vision' not in m]
         models.sort(reverse=True)
-        return models[0].replace('models/', '') if models else "gemini-1.5-flash"
-    except: return "gemini-1.5-flash"
+        return models[0].replace('models/', '') if models else "gemini-2.0-flash"
+    except: return "gemini-2.0-flash"
 
-def extract_all_images(pdf_path, paper_id):
-    """모든 이미지를 흰색 배경으로 보정하여 추출합니다."""
+def extract_safe_images(pdf_path, paper_id):
+    """그림 추출이 실패하더라도 최소 1개의 이미지는 무조건 생성하여 폴더 유실을 방지합니다."""
     doc = fitz.open(pdf_path)
     image_list = []
     
+    # 1. [필살기] 1페이지를 통째로 캡처 (폴더 생성 보장용)
+    page = doc[0]
+    pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+    snapshot_name = f"{paper_id}_main_page.png"
+    pix.save(os.path.join(IMAGE_DIR, snapshot_name))
+    image_list.append(snapshot_name)
+
+    # 2. 개별 Figure 추출 시도
     for page_num, page in enumerate(doc):
         for img_idx, img in enumerate(page.get_images(full=True)):
-            xref = img[0]
-            base_image = doc.extract_image(xref)
-            
-            # 너무 작은 아이콘(10KB 이하)은 무시
-            if len(base_image["image"]) < 10000: continue
-            
-            filename = f"{paper_id}_p{page_num+1}_{img_idx}.png"
-            filepath = os.path.join(IMAGE_DIR, filename)
-            
             try:
+                xref = img[0]
                 pix = fitz.Pixmap(doc, xref)
-                # 배경색 보정 (흰색 도화지 위에 그리기)
+                # 너무 작은 아이콘은 제외
+                if pix.width < 100 or pix.height < 100: continue
+                
+                # 배경 흰색 보정
                 rgb_pix = fitz.Pixmap(fitz.csRGB, pix.width, pix.height, 0)
                 rgb_pix.clear_with_white()
+                if pix.colorspace.n < 3: pix = fitz.Pixmap(fitz.csRGB, pix)
+                rgb_pix.copy(pix, (0, 0, pix.width, pix.height))
                 
-                if pix.colorspace.n < 3:
-                    temp = fitz.Pixmap(fitz.csRGB, pix)
-                    rgb_pix.copy(temp, (0, 0, pix.width, pix.height))
-                else:
-                    rgb_pix.copy(pix, (0, 0, pix.width, pix.height))
-                
-                rgb_pix.save(filepath)
-                image_list.append(filename)
+                fname = f"{paper_id}_fig_{page_num+1}_{img_idx}.png"
+                rgb_pix.save(os.path.join(IMAGE_DIR, fname))
+                image_list.append(fname)
             except: continue
             
     doc.close()
     return image_list
 
 def process_paper(url, mode="free"):
-    # ArXiv ID 추출 및 파일명 설정
+    # URL에서 ID 추출 (ArXiv 대응)
     match = re.search(r'arxiv\.org/(?:abs|pdf|html)/([0-9.]+)', url)
     paper_id = match.group(1).replace('.', '_') if match else "paper"
     md_path = os.path.join(DOCS_DIR, f"{paper_id}.md")
 
-    # 기존 파일 삭제 (강제 재분석을 위해 테스트 중에는 체크 해제 가능)
+    # [테스트용] 기존 파일이 있어도 무조건 새로 분석하도록 설정
+    # 실사용 시에는 아래 if문을 살려두면 좋습니다.
     # if os.path.exists(md_path): return
 
     pdf_path = f"temp_{paper_id}.pdf"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    req = urllib.request.Request(f"https://arxiv.org/pdf/{match.group(1)}.pdf" if match else url, headers=headers)
+    req = urllib.request.Request(f"https://arxiv.org/pdf/{match.group(1)}.pdf" if match else url, 
+                                 headers={'User-Agent': 'Mozilla/5.0'})
     
     try:
         with urllib.request.urlopen(req) as resp, open(pdf_path, 'wb') as f:
             f.write(resp.read())
-    except: return
+    except Exception as e:
+        print(f"다운로드 실패: {e}")
+        return
 
-    # 1. 이미지 추출 (단순/확실한 방식)
-    images = extract_all_images(pdf_path, paper_id)
+    # 이미지 추출
+    images = extract_safe_images(pdf_path, paper_id)
     
-    # 2. 텍스트 분석
+    # 본문 텍스트 추출 (앞 10페이지만)
     doc = fitz.open(pdf_path)
-    text = "".join([p.get_text() for p in doc])
+    text = "".join([p.get_text() for p in doc[:10]])
     doc.close()
-    os.remove(pdf_path)
+    if os.path.exists(pdf_path): os.remove(pdf_path)
 
     model = get_latest_model(mode)
     try:
         res = client.models.generate_content(model=model, contents=SYSTEM_PROMPT + "\n\n" + text)
         analysis = res.text
-    except: return
+    except Exception as e:
+        print(f"API 에러: {e}")
+        return
 
-    # 3. 마크다운 저장
+    # 마크다운 저장
     with open(md_path, "w", encoding="utf-8") as f:
-        f.write(f"# Analysis: {paper_id}\n\n{analysis}\n\n---\n### Figures\n\n")
+        f.write(f"# Analysis: {paper_id}\n\n{analysis}\n\n---\n### Figures & Snapshots\n\n")
         for img in images:
+            # 웹사이트 경로에 맞게 images/파일명 형식으로 작성
             f.write(f"![{img}](images/{img})\n\n")
+    
+    print(f"✅ {paper_id} 분석 완료!")
 
 if __name__ == "__main__":
     if os.path.exists("paper_links.txt"):
